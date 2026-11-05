@@ -1,6 +1,7 @@
 --=====================================================================
 --  刀刃球 Blade Ball | 自动弹反
 --  功能：精准(1-100) / 范围(1-10) 滑动条 + 自动调整 + 脚下检测圈
+--        拟人化随机延迟 + 精准上限保护
 --=====================================================================
 
 local Players             = game:GetService("Players")
@@ -18,9 +19,13 @@ local CONFIG = {
     BaseRadius      = 2.0,   -- 范围=1 时圆圈半径(studs)
     BaseWindow      = 0.45,  -- 精准=1 时的时间窗口(秒)，越早触发
     MinWindow       = 0.03,  -- 精准=100 时的时间窗口(秒)，越准
+    WindowFloor     = 0.05,  -- 时间窗口地板，防止完美到不可能
     ParryCooldown   = 0.15,  -- 两次弹反最小间隔
     CircleHeight    = 2.8,   -- 圆圈在脚下多深
     CircleTrans     = 0.72,  -- 圆圈透明度
+    HumanDelayMin   = 0.02,  -- 拟人化延迟下限
+    HumanDelayMax   = 0.08,  -- 拟人化延迟上限
+    PrecisionCap    = 95,    -- 自动调整时精准上限
 }
 
 local STATE = {
@@ -479,21 +484,34 @@ local function getRadius()
 end
 
 local function getTimeWindow()
-    -- 精准 1 → BaseWindow（很早就触发）
-    -- 精准 100 → MinWindow（接近完美时机）
+    -- 精准 1   → BaseWindow（很早就触发）
+    -- 精准 100 → MinWindow（接近完美时机），但受 WindowFloor 保护
     local t = (STATE.Precision - 1) / 99
-    return CONFIG.BaseWindow + (CONFIG.MinWindow - CONFIG.BaseWindow) * t
+    local window = CONFIG.BaseWindow + (CONFIG.MinWindow - CONFIG.BaseWindow) * t
+    return math.max(CONFIG.WindowFloor, window)
 end
 
+-- 拟人化弹反：冷却占位 → 随机延迟 → 模拟鼠标点击
 local function fireParry()
     local now = os.clock()
     if now - STATE.LastParry < CONFIG.ParryCooldown then return end
+
+    -- 立刻占位：防止同一帧内多颗球都通过检查、排队狂点
     STATE.LastParry = now
     STATE.ParryCount += 1
 
-    pcall(function()
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, 0)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, 0)
+    -- 拟人化随机延迟：模拟真人反应浮动
+    local humanDelay = CONFIG.HumanDelayMin
+        + math.random() * (CONFIG.HumanDelayMax - CONFIG.HumanDelayMin)
+
+    task.delay(humanDelay, function()
+        -- 延迟期间若已被关闭，就不点了
+        if not STATE.Enabled then return end
+
+        pcall(function()
+            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, 0)
+            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, 0)
+        end)
     end)
 
     refreshUI()
@@ -555,8 +573,8 @@ local function applyAutoAdjust(now)
     -- 目标值
     -- 速度 50 → 范围 ≈ 2.4；速度 150 → 范围 ≈ 5.3；速度 300 → 范围 = 10
     local targetRange = math.clamp(1 + bestSpeed / 35, 1, 10)
-    -- ETA 1.5s → 精准 ≈ 18；ETA 0.3s → 精准 ≈ 84；ETA 0.1s → 精准 ≈ 95
-    local targetPrecision = math.clamp(100 - bestEta * 55, 5, 100)
+    -- ETA 1.5s → 精准 ≈ 18；ETA 0.3s → 精准 ≈ 84；上限由 PrecisionCap 保护
+    local targetPrecision = math.clamp(100 - bestEta * 55, 5, CONFIG.PrecisionCap)
 
     smooth.range     = smooth.range     + (targetRange     - smooth.range)     * 0.1
     smooth.precision = smooth.precision + (targetPrecision - smooth.precision) * 0.1
