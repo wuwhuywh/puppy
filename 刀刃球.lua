@@ -2,6 +2,7 @@
 --  刀刃球 Blade Ball | 自动弹反
 --  功能：精准(1-100) / 范围(1-10) 滑动条 + 自动调整 + 脚下检测圈
 --        拟人化随机延迟 + 精准上限保护
+--        [新增] 收起时销毁面板 ScreenGui + 双重 Kick Hook
 --=====================================================================
 
 local Players             = game:GetService("Players")
@@ -11,15 +12,50 @@ local RunService          = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera      = workspace.CurrentCamera
+local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+
+--=====================================================================
+--  防护模块：Kick Hook
+--  放在最顶部，先于任何 UI / 游戏逻辑生效
+--  两种方式互相兜底：
+--    1) hookmetamethod 拦截 __namecall，覆盖 "LocalPlayer:Kick()"
+--    2) hookfunction 拦截 LocalPlayer.Kick 本身，覆盖局部化引用
+--=====================================================================
+do
+    -- 方式一：__namecall
+    pcall(function()
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            if self == LocalPlayer and (method == "Kick" or method == "kick") then
+                return -- 静默拦截
+            end
+            return oldNamecall(self, ...)
+        end)
+    end)
+
+    -- 方式二：直接替换 LocalPlayer.Kick
+    pcall(function()
+        if typeof(hookfunction) == "function" then
+            local oldKick = LocalPlayer.Kick
+            LocalPlayer.Kick = newcclosure(function(self, ...)
+                if self == LocalPlayer then
+                    return -- 静默拦截
+                end
+                return oldKick(self, ...)
+            end)
+        end
+    end)
+end
 
 --------------------------------------------------------------------
 -- 1. 配置与状态
 --------------------------------------------------------------------
 local CONFIG = {
     BaseRadius      = 2.0,   -- 范围=1 时圆圈半径(studs)
-    BaseWindow      = 0.45,  -- 精准=1 时的时间窗口(秒)，越早触发
-    MinWindow       = 0.03,  -- 精准=100 时的时间窗口(秒)，越准
-    WindowFloor     = 0.05,  -- 时间窗口地板，防止完美到不可能
+    BaseWindow      = 0.45,  -- 精准=1 时的时间窗口(秒)
+    MinWindow       = 0.03,  -- 精准=100 时的时间窗口(秒)
+    WindowFloor     = 0.05,  -- 时间窗口地板
     ParryCooldown   = 0.15,  -- 两次弹反最小间隔
     CircleHeight    = 2.8,   -- 圆圈在脚下多深
     CircleTrans     = 0.72,  -- 圆圈透明度
@@ -32,8 +68,8 @@ local STATE = {
     Enabled    = false,
     ShowCircle = true,
     AutoAdjust = true,
-    Precision  = 50,   -- 1-100
-    Range      = 5,    -- 1-10
+    Precision  = 50,
+    Range      = 5,
     ParryCount = 0,
     LastParry  = 0,
     CurrentBallSpeed = 0,
@@ -80,7 +116,6 @@ local function makeLabel(parent, props)
     return label
 end
 
--- 可拖动 + 轻点判定
 local function makeDraggable(frame, handle, onTap)
     handle = handle or frame
     local dragging, dragStart, startPos, moved = false, nil, nil, 0
@@ -118,9 +153,7 @@ local function makeDraggable(frame, handle, onTap)
     end)
 end
 
--- 滑动条组件
 local function makeSlider(parent, props)
-    -- props: Label, Min, Max, Default, Y, Integer, OnChanged
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, -24, 0, 38)
     container.Position = UDim2.fromOffset(12, props.Y)
@@ -212,28 +245,38 @@ end
 
 --------------------------------------------------------------------
 -- 3. 创建 UI
+--   mainGui   : 面板，收起时 Parent = nil（彻底离开数据模型）
+--   floatGui  : 悬浮球，常驻，特征极小
 --------------------------------------------------------------------
-local gui = Instance.new("ScreenGui")
-gui.Name = "BladeBallHelper"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.DisplayOrder = 999
-gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
 local viewport = Camera.ViewportSize
 
--- 主面板
+-- 悬浮球 ScreenGui（常驻）
+local floatGui = Instance.new("ScreenGui")
+floatGui.Name = "BladeBallFloat"
+floatGui.ResetOnSpawn = false
+floatGui.IgnoreGuiInset = true
+floatGui.DisplayOrder = 1000
+floatGui.Parent = PlayerGui
+
+-- 面板 ScreenGui（可被整体移除）
+local mainGui = Instance.new("ScreenGui")
+mainGui.Name = "BladeBallMain"
+mainGui.ResetOnSpawn = false
+mainGui.IgnoreGuiInset = true
+mainGui.DisplayOrder = 999
+mainGui.Parent = PlayerGui
+
+-- ===== 主面板 =====
 local panel = Instance.new("Frame")
 panel.Name = "Panel"
 panel.Size = UDim2.fromOffset(260, 292)
 panel.Position = UDim2.fromOffset(math.max(20, viewport.X - 280), 64)
 panel.BackgroundColor3 = THEME.BG
 panel.BorderSizePixel = 0
-panel.Parent = gui
+panel.Parent = mainGui
 addCorner(panel, 10)
 addStroke(panel, THEME.Accent, 1, 0.55)
 
--- 标题栏
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 34)
 titleBar.BackgroundColor3 = THEME.BG2
@@ -257,7 +300,6 @@ makeLabel(titleBar, {
     TextSize = 14,
 })
 
--- 收起按钮
 local collapseBtn = Instance.new("TextButton")
 collapseBtn.Size = UDim2.fromOffset(24, 24)
 collapseBtn.Position = UDim2.new(1, -32, 0, 5)
@@ -270,7 +312,6 @@ collapseBtn.AutoButtonColor = false
 collapseBtn.Parent = titleBar
 addCorner(collapseBtn, 6)
 
--- 自动弹反开关
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(1, -24, 0, 38)
 toggleBtn.Position = UDim2.fromOffset(12, 44)
@@ -284,10 +325,8 @@ toggleBtn.Parent = panel
 addCorner(toggleBtn, 8)
 local toggleStroke = addStroke(toggleBtn, THEME.Red, 1, 0.25)
 
--- 平滑用的辅助对象（自动调整会改写滑动条数值）
 local smooth = { precision = STATE.Precision, range = STATE.Range }
 
--- 精准滑动条
 local precisionSlider = makeSlider(panel, {
     Label = "精准", Min = 1, Max = 100, Default = STATE.Precision,
     Y = 90, Integer = true,
@@ -297,7 +336,6 @@ local precisionSlider = makeSlider(panel, {
     end,
 })
 
--- 范围滑动条
 local rangeSlider = makeSlider(panel, {
     Label = "范围", Min = 1, Max = 10, Default = STATE.Range,
     Y = 132, Integer = true,
@@ -307,7 +345,6 @@ local rangeSlider = makeSlider(panel, {
     end,
 })
 
--- 自动调整开关
 local autoBtn = Instance.new("TextButton")
 autoBtn.Size = UDim2.new(1, -24, 0, 28)
 autoBtn.Position = UDim2.fromOffset(12, 178)
@@ -321,7 +358,6 @@ autoBtn.Parent = panel
 addCorner(autoBtn, 6)
 local autoStroke = addStroke(autoBtn, THEME.Green, 1, 0.2)
 
--- 显示圆圈开关
 local circleBtn = Instance.new("TextButton")
 circleBtn.Size = UDim2.new(1, -24, 0, 28)
 circleBtn.Position = UDim2.fromOffset(12, 212)
@@ -335,7 +371,6 @@ circleBtn.Parent = panel
 addCorner(circleBtn, 6)
 local circleStroke = addStroke(circleBtn, THEME.Green, 1, 0.2)
 
--- 状态标签
 local statusLabel = makeLabel(panel, {
     Text = "状态：待机",
     Size = UDim2.new(1, -24, 0, 24),
@@ -345,7 +380,7 @@ local statusLabel = makeLabel(panel, {
     TextColor3 = THEME.SubText,
 })
 
--- 悬浮球
+-- ===== 悬浮球（在 floatGui 里）=====
 local floatBtn = Instance.new("TextButton")
 floatBtn.Size = UDim2.fromOffset(54, 54)
 floatBtn.Position = UDim2.fromOffset(math.max(20, viewport.X - 74), 300)
@@ -356,7 +391,7 @@ floatBtn.Font = Enum.Font.GothamBold
 floatBtn.TextSize = 22
 floatBtn.AutoButtonColor = false
 floatBtn.Visible = false
-floatBtn.Parent = gui
+floatBtn.Parent = floatGui
 addCorner(floatBtn, 999)
 local floatStroke = addStroke(floatBtn, THEME.Accent, 2, 0.2)
 
@@ -425,14 +460,16 @@ circleBtn.MouseButton1Click:Connect(function()
     refreshUI()
 end)
 
+-- 收起：把整个面板 ScreenGui 从 PlayerGui 移除
 collapseBtn.MouseButton1Click:Connect(function()
-    panel.Visible = false
+    mainGui.Parent = nil
     floatBtn.Visible = true
 end)
 
+-- 展开：重新挂载面板 ScreenGui
 makeDraggable(panel, titleBar)
 makeDraggable(floatBtn, floatBtn, function()
-    panel.Visible = true
+    mainGui.Parent = PlayerGui
     floatBtn.Visible = false
 end)
 
@@ -457,8 +494,8 @@ circle.Parent = workspace
 --------------------------------------------------------------------
 -- 7. 核心逻辑
 --------------------------------------------------------------------
-local ballStates = setmetatable({}, { __mode = "k" })  -- 球速度缓存
-local parried    = setmetatable({}, { __mode = "k" })  -- 本次进入圈已弹反标记
+local ballStates = setmetatable({}, { __mode = "k" })
+local parried    = setmetatable({}, { __mode = "k" })
 
 local function getRootPosition()
     local char = LocalPlayer.Character
@@ -484,30 +521,23 @@ local function getRadius()
 end
 
 local function getTimeWindow()
-    -- 精准 1   → BaseWindow（很早就触发）
-    -- 精准 100 → MinWindow（接近完美时机），但受 WindowFloor 保护
     local t = (STATE.Precision - 1) / 99
     local window = CONFIG.BaseWindow + (CONFIG.MinWindow - CONFIG.BaseWindow) * t
     return math.max(CONFIG.WindowFloor, window)
 end
 
--- 拟人化弹反：冷却占位 → 随机延迟 → 模拟鼠标点击
 local function fireParry()
     local now = os.clock()
     if now - STATE.LastParry < CONFIG.ParryCooldown then return end
 
-    -- 立刻占位：防止同一帧内多颗球都通过检查、排队狂点
     STATE.LastParry = now
     STATE.ParryCount += 1
 
-    -- 拟人化随机延迟：模拟真人反应浮动
     local humanDelay = CONFIG.HumanDelayMin
         + math.random() * (CONFIG.HumanDelayMax - CONFIG.HumanDelayMin)
 
     task.delay(humanDelay, function()
-        -- 延迟期间若已被关闭，就不点了
         if not STATE.Enabled then return end
-
         pcall(function()
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, 0)
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, 0)
@@ -517,7 +547,6 @@ local function fireParry()
     refreshUI()
 end
 
--- 每帧更新球的速度向量
 local function updateBallStates(now)
     for _, ball in ipairs(getBalls()) do
         local st = ballStates[ball]
@@ -541,7 +570,6 @@ local function updateBallStates(now)
     end
 end
 
--- 自动调整精准与范围
 local function applyAutoAdjust(now)
     if not STATE.AutoAdjust then return end
     local rootPos = getRootPosition()
@@ -570,10 +598,7 @@ local function applyAutoAdjust(now)
     end
     STATE.CurrentBallSpeed = bestSpeed
 
-    -- 目标值
-    -- 速度 50 → 范围 ≈ 2.4；速度 150 → 范围 ≈ 5.3；速度 300 → 范围 = 10
     local targetRange = math.clamp(1 + bestSpeed / 35, 1, 10)
-    -- ETA 1.5s → 精准 ≈ 18；ETA 0.3s → 精准 ≈ 84；上限由 PrecisionCap 保护
     local targetPrecision = math.clamp(100 - bestEta * 55, 5, CONFIG.PrecisionCap)
 
     smooth.range     = smooth.range     + (targetRange     - smooth.range)     * 0.1
@@ -594,7 +619,6 @@ local function applyAutoAdjust(now)
     end
 end
 
--- 更新圆圈
 local function updateCircle(rootPos)
     if not rootPos or not STATE.Enabled or not STATE.ShowCircle then
         circle.Transparency = 1
@@ -606,13 +630,11 @@ local function updateCircle(rootPos)
     circle.CFrame = CFrame.new(rootPos - Vector3.new(0, CONFIG.CircleHeight, 0))
         * CFrame.Angles(0, 0, math.rad(90))
 
-    -- 球速越快，圆圈越偏橙红
     local ratio = math.clamp(STATE.CurrentBallSpeed / 300, 0, 1)
     circle.Color = THEME.Accent:Lerp(THEME.Orange, ratio)
     circle.Transparency = CONFIG.CircleTrans
 end
 
--- 检测圈内球并弹反
 local function checkParry(rootPos)
     if not STATE.Enabled or not rootPos then return end
 
@@ -627,7 +649,6 @@ local function checkParry(rootPos)
         local offset     = ball.Position - rootPos
         local horizontal = Vector3.new(offset.X, 0, offset.Z).Magnitude
 
-        -- 离开圈外时重置标记
         if horizontal > radius * 1.2 then
             parried[ball] = nil
             continue
@@ -636,13 +657,11 @@ local function checkParry(rootPos)
         if horizontal > radius then continue end
         if parried[ball] then continue end
 
-        -- 球是否在朝玩家靠近
         local toPlayer = (rootPos - ball.Position)
         if toPlayer.Magnitude < 0.1 then continue end
         local approaching = st.velocity:Dot(toPlayer.Unit) > 0
         if not approaching then continue end
 
-        -- 预计到达时间
         local eta = offset.Magnitude / st.speed
         if eta <= window then
             parried[ball] = true
