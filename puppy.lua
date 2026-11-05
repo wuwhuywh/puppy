@@ -29,43 +29,43 @@ local ok, err = pcall(function()
 	UIS.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then
 			lastPos = Vector2.new(i.Position.X, i.Position.Y)
-		结束
-	结束)
-UIS.InputChanged：连接(功能(i)
-		如果i.UserInputType==枚举.UserInputType.Touch或i.UserInputType==枚举.UserInputType.MouseMovementthen
-lastPos=Vector2.new(i.Position.X，i.Position.Y)
-		结束
-	结束)
-	当地的 功能mousePos()
-		如果UIS.TouchEnabled和 不UIS.MouseEnabled然后 返回lastPos结束
-		返回UI:GetMouseLocation()
-	结束
+		end
+	end)
+	UIS.InputChanged:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseMovement then
+			lastPos = Vector2.new(i.Position.X, i.Position.Y)
+		end
+	end)
+	local function mousePos()
+		if UIS.TouchEnabled and not UIS.MouseEnabled then return lastPos end
+		return UIS:GetMouseLocation()
+	end
 
-	当地的重音=Color3.FromRGB(255, 120, 30)
-	当地的Conns={}
-	当地的 功能连接(sig，fn)
-		当地的C=sig：连接(fn)
-Conns[#conns+1]=c
-		返回c
-	结束
-	当地的 功能MK(类，道具)
-		当地的O=Instance.new(类)
-		如果道具然后
-			为K，v在……内对(道具)做O[k]=v结束
-		结束
-		返回o
-	结束
+	local accent = Color3.fromRGB(255, 120, 30)
+	local conns = {}
+	local function conn(sig, fn)
+		local c = sig:Connect(fn)
+		conns[#conns + 1] = c
+		return c
+	end
+	local function mk(class, props)
+		local o = Instance.new(class)
+		if props then
+			for k, v in pairs(props) do o[k] = v end
+		end
+		return o
+	end
 
-	当地的HasDrawing=假的
-pcall(功能()
-		当地的T=Drawing.new("方块字")
-HasDrawing=正确
-T：删除()
-	结束)
+	local HasDrawing = false
+	pcall(function()
+		local t = Drawing.new("Square")
+		HasDrawing = true
+		t:Remove()
+	end)
 
-	当地的CFG={
-ESP=假的，框=正确，骨架=假的，名称=正确，健康=假的，距离=正确,
-RenderDist=2500，TeamCheck=正确，TeamColors=假的,
+	local cfg = {
+		ESP = false, Boxes = true, Skeletons = false, Names = true, Health = false, Distance = true,
+		RenderDist = 2500, TeamCheck = true, TeamColors = false,
 		ShowNPC = true,
 		BoxColor = Color3.fromRGB(0, 186, 186), OutlineColor = Color3.fromRGB(15, 15, 15),
 		NameColor = Color3.fromRGB(255, 255, 255), DistanceColor = Color3.fromRGB(180, 180, 180),
@@ -1056,182 +1056,182 @@ RenderDist=2500，TeamCheck=正确，TeamColors=假的,
 			local bw = 6
 			local bh = math.max(h, 4)
 			local hh = math.max(bh * pct, 1)
-			当地的 bx = x - 10
-			当地的 by = y
+			local bx = x - 10
+			local by = y
 
-			data.HealthBg.Filled = 正确
+			data.HealthBg.Filled = true
 			data.HealthBg.Thickness = 1
 			data.HealthBg.Transparency = 0
 			data.HealthBg.Color = Color3.fromRGB(10, 10, 10)
 			data.HealthBg.Position = Vector2.new(bx - 1, by - 1)
 			data.HealthBg.Size = Vector2.new(bw + 2, bh + 2)
-			data.HealthBg.Visible = 正确
+			data.HealthBg.Visible = true
 
-			data.Health.Filled = 正确
+			data.Health.Filled = true
 			data.Health.Thickness = 1
 			data.Health.Transparency = 0
 			data.Health.Color = Color3.fromRGB(50, 205, 50):Lerp(Color3.fromRGB(255, 0, 0), 1 - pct)
 			data.Health.Position = Vector2.new(bx, by + (bh - hh))
 			data.Health.Size = Vector2.new(bw, hh)
-			data.Health.Visible = 正确
-		其他
-			data.Health.Visible = 假的
-			data.HealthBg.Visible = 假的
-		结束
-	结束
+			data.Health.Visible = true
+		else
+			data.Health.Visible = false
+			data.HealthBg.Visible = false
+		end
+	end
 
 	-- ===== NPC 扫描 =====
 	-- 初始扫描（分帧）
-	当地的 功能 scanNPCs()
-		当地的 okd, descendants = pcall(功能() 返回 Workspace:GetDescendants() 结束)
-		如果 不 okd 或 不 descendants 然后 返回 结束
-		当地的 count = 0
-		为 _, obj 在……内 ipairs(descendants) 做
-			如果 obj:IsA("Model") 和 isHumanoidModel(obj) 然后
-				npcSet[obj] = 正确
-			结束
-count=count+1
-			如果 count % 300 == 0 然后 task.wait() 结束
-		结束
-	结束
-扫描NPC)
+	local function scanNPCs()
+		local okd, descendants = pcall(function() return Workspace:GetDescendants() end)
+		if not okd or not descendants then return end
+		local count = 0
+		for _, obj in ipairs(descendants) do
+			if obj:IsA("Model") and isHumanoidModel(obj) then
+				npcSet[obj] = true
+			end
+			count = count + 1
+			if count % 300 == 0 then task.wait() end
+		end
+	end
+	task.spawn(scanNPCs)
 
 	-- DescendantAdded 增量
-Conn(添加了工作空间.后代，功能(obj)
-		如果 obj:IsA("Model") 和 isHumanoidModel(obj) 然后
-			npcSet[obj] = 正确
-		elseif obj:IsA("Humanoid") 然后
-			当地的 m = obj.Parent
-			如果 m 和 m:IsA("Model") 和 isHumanoidModel(m) 然后
-				npcSet[m] = 正确
-			结束
-		结束
-	结束)
+	conn(Workspace.DescendantAdded, function(obj)
+		if obj:IsA("Model") and isHumanoidModel(obj) then
+			npcSet[obj] = true
+		elseif obj:IsA("Humanoid") then
+			local m = obj.Parent
+			if m and m:IsA("Model") and isHumanoidModel(m) then
+				npcSet[m] = true
+			end
+		end
+	end)
 
-Conn(Workspace.DescendantRemoving，功能(obj)
-		如果 obj:IsA("Model") 然后
-			如果 npcSet[obj] 然后
+	conn(Workspace.DescendantRemoving, function(obj)
+		if obj:IsA("Model") then
+			if npcSet[obj] then
 				npcSet[obj] = nil
-				如果 espData[obj] 然后 removeESP(obj) 结束
-			结束
-		elseif obj:IsA("Humanoid") 然后
-			当地的 m = obj.Parent
-			如果 m 和 npcSet[m] 然后
-npcSet[m]=nil
-				如果 espData[m] 然后 removeESP(m) 结束
-			结束
-		结束
-	结束)
+				if espData[obj] then removeESP(obj) end
+			end
+		elseif obj:IsA("Humanoid") then
+			local m = obj.Parent
+			if m and npcSet[m] then
+				npcSet[m] = nil
+				if espData[m] then removeESP(m) end
+			end
+		end
+	end)
 
 	-- 周期性全量重扫（每 3 秒，防流式加载/延迟生成漏掉）
-任务.派生(功能()
+	task.spawn(function()
 		task.wait(1.5)
-		在……期间 正确 做
-			当地的 okd, descendants = pcall(功能() 返回 Workspace:GetDescendants() 结束)
-			如果 okd 和 descendants 然后
-				当地的 i = 0
-				为 _, obj 在……内 ipairs(descendants) 做
-					如果 obj:IsA("Model") 和 isHumanoidModel(obj) 然后
-						npcSet[obj] = 正确
-					结束
+		while true do
+			local okd, descendants = pcall(function() return Workspace:GetDescendants() end)
+			if okd and descendants then
+				local i = 0
+				for _, obj in ipairs(descendants) do
+					if obj:IsA("Model") and isHumanoidModel(obj) then
+						npcSet[obj] = true
+					end
 					i = i + 1
-					如果 i % 500 == 0 然后 task.wait() 结束
-				结束
-			结束
+					if i % 500 == 0 then task.wait() end
+				end
+			end
 			-- 清理失效
-			为 m 在……内 pairs(npcSet) 做
-				如果 不 m.Parent 然后
-npcSet[m]=nil
---PuppyWare精简版+NPC透视修复+子弹追踪+FOV常显+加强队友检测+死亡检测+血条修复+大字体
-				结束
-			结束
-task.wait(3结束)
-		结束
-	结束)
+			for m in pairs(npcSet) do
+				if not m.Parent then
+					npcSet[m] = nil
+					if espData[m] then removeESP(m) end
+				end
+			end
+			task.wait(3)
+		end
+	end)
 
-	时间:
-RunService.RenderSteped：连接(功能()
-camera=Workspace.CurrentCamera
-		如果 不 Camera 然后 返回 结束
-当地的MyTeam=getTeam(LP)
-		当地的 myColor = getTeamColor(LP)
+	-- ===== ESP 主循环 =====
+	RunService.RenderStepped:Connect(function()
+		Camera = Workspace.CurrentCamera
+		if not Camera then return end
+		local myTeam = getTeam(LP)
+		local myColor = getTeamColor(LP)
 
-		为 _, player 在……内 ipairs(Players:GetPlayers()) 做
-如果播放器==LP然后
-				如果 espData[player] 然后 removeESP(player) 结束
-继续
-			结束
-当地的char=player.Character
-			如果 不 char 或 不 char.Parent 然后
-removeESP(播放器)
-继续
-			结束
-			当地的 hum = char:FindFirstChildOfClass("Humanoid")
-			当地的 root = char:FindFirstChild("HumanoidRootPart") 或 char:FindFirstChild("UpperTorso") 或 char.PrimaryPart
-当地的pTeam=getTeam(玩家)
-			当地的 pColor = getTeamColor(player)
-当地的isTeamName=myTeam和pTeam和MyTeam==pTeam
-			当地的 isTeamColor = myColor 和 pColor 和 myColor == pColor
-			如果 cfg.TeamCheck 和 (isTeamName 或 isTeamColor) 然后
-hideESP(播放器)
-其他
-继续
-			结束
-renderESP(播放器、字符、哼声、根、播放器、名称、pTeam、cfg.ESP)
-			为 m 在……内 pairs(npcSet) 做
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player == LP then
+				if espData[player] then removeESP(player) end
+				continue
+			end
+			local char = player.Character
+			if not char or not char.Parent then
+				removeESP(player)
+				continue
+			end
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso") or char.PrimaryPart
+			local pTeam = getTeam(player)
+			local pColor = getTeamColor(player)
+			local isTeamName = myTeam and pTeam and myTeam == pTeam
+			local isTeamColor = myColor and pColor and myColor == pColor
+			if cfg.TeamCheck and (isTeamName or isTeamColor) then
+				hideESP(player)
+				cleanExtras(char)
+				continue
+			end
+			renderESP(player, char, hum, root, player.Name, pTeam, cfg.ESP)
+		end
 
---NPC计数
-		当地的 npcCount = 00
-		为 _ 在……内 pairs(npcSet) 做 npcCount = npcCount + 1 结束1 结束
+		-- NPC 计数
+		local npcCount = 0
+		for _ in pairs(npcSet) do npcCount = npcCount + 1 end
 
-		如果 cfg.ShowNPC 然后
-			为 model 在……内 pairs(npcSet) 做
-				如果 不 model.Parent 然后
-npcSet[model]=nilnil
-					如果 espData[model] 然后 removeESP(model) 结束
-其他
-继续
-				结束
-				当地的 hum = model:FindFirstChildOfClass("Humanoid")"Humanoid")"Humanoid")"Humanoid")
-				当地的 root = findRoot(model)
-				当地的 npcName = model.Name
-如果npcName==""或npcName=="Model"或npcName=="Rig"然后npcName="NPC"结束"" 或 npcName == "Model" 或 npcName == "Rig" 然后 npcName = "NPC" 结束""或npcName=="Model"或npcName=="Rig"然后npcName="NPC"结束"" 或 npcName == "Model" 或 npcName == "Rig" 然后 npcName = "NPC" 结束
-renderESP(模型、模型、哼声、根、npcName、nil, 正确)nil, 正确)nil, 正确)nil, 正确)
-			结束
-			npcStatus.Visible = 正确
-现在,我们可以把这些东西都放在一起."NPC："..npcCount"NPC: " .. npcCount
-		其他
-			为 model 在……内 pairs(npcSet) 做
-				如果 espData[model] 然后 removeESP(model) 结束
-其他
-			结束
-			npcStatus.Visible = 假的
-		结束
-	结束)
+		if cfg.ShowNPC then
+			for model in pairs(npcSet) do
+				if not model.Parent then
+					npcSet[model] = nil
+					if espData[model] then removeESP(model) end
+					cleanExtras(model)
+					continue
+				end
+				local hum = model:FindFirstChildOfClass("Humanoid")
+				local root = findRoot(model)
+				local npcName = model.Name
+				if npcName == "" or npcName == "Model" or npcName == "Rig" then npcName = "NPC" end
+				renderESP(model, model, hum, root, npcName, nil, true)
+			end
+			npcStatus.Visible = true
+			npcStatus.Text = "NPC: " .. npcCount
+		else
+			for model in pairs(npcSet) do
+				if espData[model] then removeESP(model) end
+				cleanExtras(model)
+			end
+			npcStatus.Visible = false
+		end
+	end)
 
-players.Player Removing:Connect(功能(p)
+	Players.PlayerRemoving:Connect(function(p)
 		removeESP(p)
-	结束)
+	end)
 
--- ===== 无后坐 =====
-当地的prevPitch=0
-RunService:BindToRenderStep("小狗无反冲"，枚举.RenderPriority.Camera.Value+100，功能()
-		如果 不 cfg.NoRecoil 然后 返回 结束
-		当地的 char = LP.Character
-		如果 不 char 然后 返回 结束
-当地的tool=char:FindFirstChildWhichIsA("Tool")"Tool")
-当地的俯仰、偏转、侧滚=摄影机.CF帧：ToOrientation()
-		如果 tool 然后
-当地的D=节距-预节距
-			如果 d > 0.001 然后0.001 然后
-				当地的 np = pitch - d
-相机。cframe=cframe.New(相机.cframe.位置)*c框架。角度(np、偏航、滚动)
-prevPitch=np
-			其他
-prevPitch=螺距
-			结束
-		其他
-prevPitch=螺距
-		结束
-	结束)
-结束)
+	-- ===== 无后坐 =====
+	local prevPitch = 0
+	RunService:BindToRenderStep("PuppyNoRecoil", Enum.RenderPriority.Camera.Value + 100, function()
+		if not cfg.NoRecoil then return end
+		local char = LP.Character
+		if not char then return end
+		local tool = char:FindFirstChildWhichIsA("Tool")
+		local pitch, yaw, roll = Camera.CFrame:ToOrientation()
+		if tool then
+			local d = pitch - prevPitch
+			if d > 0.001 then
+				local np = pitch - d
+				Camera.CFrame = CFrame.new(Camera.CFrame.Position) * CFrame.Angles(np, yaw, roll)
+				prevPitch = np
+			else
+				prevPitch = pitch
+			end
+		else
+			prevPitch = pitch
+		end
+	end)
+end)
