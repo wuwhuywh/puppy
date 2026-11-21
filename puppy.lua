@@ -1,903 +1,582 @@
--- [[ // Error Handling // ]]
-local Passed, Statement = pcall(function()
-	-- [[ // Libraries // ]]
-	local library = {
-		Renders = {},
-		Connections = {},
-		Folder = "PuppyWare",
-		Assets = "Assets",
-		Configs = "Configs"
-	}
-	local utility = {}
-	-- [[ // Tables // ]]
-	local pages = {}
-	local sections = {}
-	-- [[ // Indexes // ]]
-	do
-		library.__index = library
-		pages.__index = pages
-		sections.__index = sections
-	end
-	-- [[ // Variables // ]]
-	local tws = game:GetService("TweenService")
-	local uis = game:GetService("UserInputService")
-	local GuiParent
-	do
-		local ok, hui = pcall(function()
-			return gethui and gethui() or nil
-		end)
-		if ok and hui then
-			GuiParent = hui
-		else
-			local ok2, cg = pcall(function()
-				return game:GetService("CoreGui")
-			end)
-			if ok2 and cg then
-				GuiParent = cg
-			else
-				GuiParent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-			end
-		end
-	end
-	-- [[ // Functions // ]]
-	function utility:RenderObject(RenderType, RenderProperties, RenderHidden)
-		local Render = Instance.new(RenderType)
-		--
-		if RenderProperties and typeof(RenderProperties) == "table" then
-			for Property, Value in pairs(RenderProperties) do
-				if Property ~= "RenderTime" then
-					Render[Property] = Value
-				end
-			end
-		end
-		--
-		library.Renders[#library.Renders + 1] = {Render, RenderProperties, RenderHidden, RenderProperties["RenderTime"] or nil}
-		--
-		return Render
-	end
-	--
-	function utility:CreateConnection(ConnectionType, ConnectionCallback)
-		local Connection = ConnectionType:Connect(ConnectionCallback)
-		--
-		library.Connections[#library.Connections + 1] = Connection
-		--
-		return Connection
-	end
-	--
-	function utility:MouseLocation()
-		return uis:GetMouseLocation()
-	end
-	--
-	function utility:Serialise(Table)
-		local Serialised = ""
-		--
-		for Index, Value in pairs(Table) do
-			Serialised = Serialised .. Value .. ", "
-		end
-		--
-		return Serialised:sub(0, #Serialised - 2)
-	end
-	--
-	function utility:Sort(Table1, Table2)
-		local Table3 = {}
-		--
-		for Index, Value in pairs(Table2) do
-			if table.find(Table1, Index) then
-				Table3[#Table3 + 1] = Value
-			end
-		end
-		--
-		return Table3
-	end
-	-- [[ // UI Functions // ]]
-	function library:CreateWindow(Properties)
-		Properties = Properties or {}
-		--
-		local Window = {
-			Pages = {},
-			Accent = Color3.fromRGB(255, 120, 30),
-			Enabled = true,
-			Key = Enum.KeyCode.Z
-		}
-		--
-		do
-			local ScreenGui = utility:RenderObject("ScreenGui", {
-				DisplayOrder = 9999,
-				Enabled = true,
-				IgnoreGuiInset = true,
-				Parent = GuiParent,
-				ResetOnSpawn = false,
-				ZIndexBehavior = "Global"
-			})
-			-- //
-			local ScreenGui_MainFrame = utility:RenderObject("Frame", {
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(12, 12, 12),
-				BorderMode = "Inset",
-				BorderSizePixel = 1,
-				Parent = ScreenGui,
-				Position = UDim2.new(0.5, 0, 0.5, 0),
-				Size = UDim2.new(0, 660, 0, 560)
-			})
-			-- // 手机端自适应缩放
-			local MainScale = utility:RenderObject("UIScale", {
-				Parent = ScreenGui_MainFrame,
-				Scale = 1
-			})
-			local function UpdateMainScale()
-				local cam = workspace.CurrentCamera
-				if not cam then return end
-				local vp = cam.ViewportSize
-				local scale = math.min(vp.X / 720, vp.Y / 620)
-				MainScale.Scale = math.clamp(scale, 0.35, 1)
-			end
-			UpdateMainScale()
-			task.spawn(function()
-				while true do
-					UpdateMainScale()
-					task.wait(0.5)
-				end
-			end)
-			-- //
-			local ScreenGui_MainFrame_InnerBorder = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = ScreenGui_MainFrame,
-				Position = UDim2.new(0, 1, 0, 1),
-				Size = UDim2.new(1, -2, 1, -2)
-			})
-			-- //
-			local MainFrame_InnerBorder_InnerFrame = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(12, 12, 12),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(60, 60, 60),
-				BorderMode = "Inset",
-				BorderSizePixel = 1,
-				Parent = ScreenGui_MainFrame,
-				Position = UDim2.new(0, 3, 0, 3),
-				Size = UDim2.new(1, -6, 1, -6)
-			})
-			-- //
-			local InnerBorder_InnerFrame_Tabs = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(12, 12, 12),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = MainFrame_InnerBorder_InnerFrame,
-				Position = UDim2.new(0, 0, 0, 4),
-				Size = UDim2.new(0, 74, 1, -4)
-			})
-			--
-			local InnerBorder_InnerFrame_Pages = utility:RenderObject("Frame", {
-				AnchorPoint = Vector2.new(1, 0),
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = MainFrame_InnerBorder_InnerFrame,
-				Position = UDim2.new(1, 0, 0, 4),
-				Size = UDim2.new(1, -73, 1, -4)
-			})
-			--
-			local InnerBorder_InnerFrame_TopGradient = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(12, 12, 12),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = MainFrame_InnerBorder_InnerFrame,
-				Position = UDim2.new(0, 0, 0, 0),
-				Size = UDim2.new(1, 0, 0, 4)
-			})
-			-- //
-			local InnerFrame_Tabs_List = utility:RenderObject("UIListLayout", {
-				Padding = UDim.new(0, 4),
-				Parent = InnerBorder_InnerFrame_Tabs,
-				FillDirection = "Vertical",
-				HorizontalAlignment = "Left",
-				VerticalAlignment = "Top"
-			})
-			--
-			local InnerFrame_Tabs_Padding = utility:RenderObject("UIPadding", {
-				Parent = InnerBorder_InnerFrame_Tabs,
-				PaddingTop = UDim.new(0, 9)
-			})
-			--
-			local InnerFrame_Pages_InnerBorder = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(45, 45, 45),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = InnerBorder_InnerFrame_Pages,
-				Position = UDim2.new(0, 1, 0, 0),
-				Size = UDim2.new(1, -1, 1, 0)
-			})
-			--
-			local InnerFrame_TopGradient_Gradient = utility:RenderObject("ImageLabel", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = InnerBorder_InnerFrame_TopGradient,
-				Position = UDim2.new(0, 1, 0, 1),
-				Size = UDim2.new(1, -2, 1, -2),
-				Image = "rbxassetid://8508019876",
-				ImageColor3 = Color3.fromRGB(255, 255, 255)
-			})
-			-- //
-			local Pages_InnerBorder_InnerFrame = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = InnerFrame_Pages_InnerBorder,
-				Position = UDim2.new(0, 1, 0, 0),
-				Size = UDim2.new(1, -1, 1, 0)
-			})
-			-- //
-			local InnerBorder_InnerFrame_Folder = utility:RenderObject("Folder", {
-				Parent = Pages_InnerBorder_InnerFrame
-			})
-			--
-			local InnerBorder_InnerFrame_Pattern = utility:RenderObject("ImageLabel", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Pages_InnerBorder_InnerFrame,
-				Position = UDim2.new(0, 0, 0, 0),
-				Size = UDim2.new(1, 0, 1, 0),
-				Image = "rbxassetid://8547666218",
-				ImageColor3 = Color3.fromRGB(12, 12, 12),
-				ScaleType = "Tile",
-				TileSize = UDim2.new(0, 8, 0, 8)
-			})
-			--
-			-- // 手机端悬浮开关按钮（独立 ScreenGui，避免被菜单淡出影响）
-			local ScreenGui_Toggle = utility:RenderObject("ScreenGui", {
-				DisplayOrder = 10000,
-				Enabled = true,
-				IgnoreGuiInset = true,
-				Parent = GuiParent,
-				ResetOnSpawn = false,
-				ZIndexBehavior = "Global"
-			})
-			local ToggleButton = utility:RenderObject("TextButton", {
-				AnchorPoint = Vector2.new(1, 0),
-				BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-				BackgroundTransparency = 0.15,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = ScreenGui_Toggle,
-				Position = UDim2.new(1, -10, 0, 70),
-				Size = UDim2.new(0, 52, 0, 52),
-				Text = "P",
-				TextColor3 = Color3.fromRGB(255, 255, 255),
-				TextSize = 20,
-				Font = "Code",
-				ZIndex = 10
-			})
-			utility:RenderObject("UICorner", {
-				CornerRadius = UDim.new(0, 8),
-				Parent = ToggleButton
-			})
-			--
-			do -- // Functions
-				function Window:SetPage(Page)
-					for index, page in pairs(Window.Pages) do
-						if page.Open and page ~= Page then
-							page:Set(false)
-						end
-					end
-				end
-				--
-				function Window:Fade(state)
-					if state then
-						ScreenGui.Enabled = true
-					else
-						task.delay(0.3, function()
-							if not Window.Enabled then
-								ScreenGui.Enabled = false
-							end
-						end)
-					end
-					--
-					for index, render in pairs(library.Renders) do
-						if not render[3] then
-							if render[1].ClassName == "Frame" and (render[2]["BackgroundTransparency"] or 0) ~= 1 then
-								tws:Create(render[1], TweenInfo.new(render[4] or 0.25, Enum.EasingStyle["Linear"], state and Enum.EasingDirection["Out"] or Enum.EasingDirection["In"]), {BackgroundTransparency = state and (render[2]["BackgroundTransparency"] or 0) or 1}):Play()
-							elseif render[1].ClassName == "ImageLabel" then
-								if (render[2]["BackgroundTransparency"] or 0) ~= 1 then
-									tws:Create(render[1], TweenInfo.new(render[4] or 0.25, Enum.EasingStyle["Linear"], state and Enum.EasingDirection["Out"] or Enum.EasingDirection["In"]), {BackgroundTransparency = state and (render[2]["BackgroundTransparency"] or 0) or 1}):Play()
-								end
-								--
-								if (render[2]["ImageTransparency"] or 0) ~= 1 then
-									tws:Create(render[1], TweenInfo.new(render[4] or 0.25, Enum.EasingStyle["Linear"], state and Enum.EasingDirection["Out"] or Enum.EasingDirection["In"]), {ImageTransparency = state and (render[2]["ImageTransparency"] or 0) or 1}):Play()
-								end
-							elseif render[1].ClassName == "TextLabel" then
-								if (render[2]["BackgroundTransparency"] or 0) ~= 1 then
-									tws:Create(render[1], TweenInfo.new(render[4] or 0.25, Enum.EasingStyle["Linear"], state and Enum.EasingDirection["Out"] or Enum.EasingDirection["In"]), {BackgroundTransparency = state and (render[2]["BackgroundTransparency"] or 0) or 1}):Play()
-								end
-								--
-								if (render[2]["TextTransparency"] or 0) ~= 1 then
-									tws:Create(render[1], TweenInfo.new(render[4] or 0.25, Enum.EasingStyle["Linear"], state and Enum.EasingDirection["Out"] or Enum.EasingDirection["In"]), {TextTransparency = state and (render[2]["TextTransparency"] or 0) or 1}):Play()
-								end
-							elseif render[1].ClassName == "ScrollingFrame" then
-								if (render[2]["BackgroundTransparency"] or 0) ~= 1 then
-									tws:Create(render[1], TweenInfo.new(render[4] or 0.25, Enum.EasingStyle["Linear"], state and Enum.EasingDirection["Out"] or Enum.EasingDirection["In"]), {BackgroundTransparency = state and (render[2]["BackgroundTransparency"] or 0) or 1}):Play()
-								end
-								--
-								if (render[2]["ScrollBarImageTransparency"] or 0) ~= 1 then
-									tws:Create(render[1], TweenInfo.new(render[4] or 0.25, Enum.EasingStyle["Linear"], state and Enum.EasingDirection["Out"] or Enum.EasingDirection["In"]), {ScrollBarImageTransparency = state and (render[2]["ScrollBarImageTransparency"] or 0) or 1}):Play()
-								end
-							end
-						end
-					end
-				end
-				--
-				function Window:Unload()
-					ScreenGui:Remove()
-					ScreenGui_Toggle:Remove()
-					--
-					for index, connection in pairs(library.Connections) do
-						connection:Disconnect()
-					end
-					--
-					library = nil
-					utility = nil
-				end
-			end
-			--
-			do -- // Index Setting
-				Window["TabsHolder"] = InnerBorder_InnerFrame_Tabs
-				Window["PagesHolder"] = InnerBorder_InnerFrame_Folder
-			end
-			--
-			do -- // Connections
-				utility:CreateConnection(ToggleButton.MouseButton1Click, function()
-					Window.Enabled = not Window.Enabled
-					Window:Fade(Window.Enabled)
-				end)
-				--
-				utility:CreateConnection(uis.InputBegan, function(Input)
-					if Input.KeyCode and Input.KeyCode == Window.Key then
-						Window.Enabled = not Window.Enabled
-						--
-						Window:Fade(Window.Enabled)
-					elseif Input.KeyCode and Input.KeyCode == Enum.KeyCode.X then
-						Window.Enabled = not Window.Enabled
-						--
-						Window:Fade(Window.Enabled)
-					end
-				end)
-			end
-		end
-		--
-		return setmetatable(Window, library)
-	end
-	--
-	function library:CreatePage(Properties)
-		Properties = Properties or {}
-		--
-		local Page = {
-			Image = (Properties.image or Properties.Image or Properties.icon or Properties.Icon),
-			Size = (Properties.size or Properties.Size or UDim2.new(0, 50, 0, 50)),
-			Open = false,
-			Window = self
-		}
-		--
-		do
-			local Page_Tab = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Page.Window["TabsHolder"],
-				Size = UDim2.new(1, 0, 0, 72)
-			})
-			-- //
-			local Page_Tab_Border = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Page_Tab,
-				Size = UDim2.new(1, 0, 1, 0),
-				Visible = false,
-				ZIndex = 2,
-				RenderTime = 0.15
-			})
-			--
-			local Page_Tab_Image = utility:RenderObject("ImageLabel", {
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Page_Tab,
-				Position = UDim2.new(0.5, 0, 0.5, 0),
-				Size = Page.Size,
-				ZIndex = 2,
-				Image = Page.Image,
-				ImageColor3 = Color3.fromRGB(100, 100, 100)
-			})
-			--
-			local Page_Tab_Button = utility:RenderObject("TextButton", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Page_Tab,
-				Size = UDim2.new(1, 0, 1, 0),
-				Text = ""
-			})
-			-- //
-			local Tab_Border_Inner = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Page_Tab_Border,
-				Position = UDim2.new(0, 0, 0, 1),
-				Size = UDim2.new(1, 1, 1, -2),
-				ZIndex = 2,
-				RenderTime = 0.15
-			})
-			-- //
-			local Border_Inner_Inner = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Tab_Border_Inner,
-				Position = UDim2.new(0, 0, 0, 1),
-				Size = UDim2.new(1, 0, 1, -2),
-				ZIndex = 2,
-				RenderTime = 0.15
-			})
-			--
-			local Inner_Inner_Pattern = utility:RenderObject("ImageLabel", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Border_Inner_Inner,
-				Position = UDim2.new(0, 0, 0, 0),
-				Size = UDim2.new(1, 0, 1, 0),
-				Image = "rbxassetid://8509210785",
-				ImageColor3 = Color3.fromRGB(12, 12, 12),
-				ScaleType = "Tile",
-				TileSize = UDim2.new(0, 8, 0, 8),
-				ZIndex = 2
-			})
-			-- //
-			local Page_Page = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Page.Window["PagesHolder"],
-				Position = UDim2.new(0, 20, 0, 20),
-				Size = UDim2.new(1, -40, 1, -40),
-				Visible = false
-			})
-			-- //
-			local Page_Page_Left = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Page_Page,
-				Position = UDim2.new(0, 0, 0, 0),
-				Size = UDim2.new(0.5, -10, 1, 0)
-			})
-			--
-			local Page_Page_Right = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Page_Page,
-				Position = UDim2.new(0.5, 10, 0, 0),
-				Size = UDim2.new(0.5, -10, 1, 0)
-			})
-			-- //
-			local Page_Left_List = utility:RenderObject("UIListLayout", {
-				Padding = UDim.new(0, 18),
-				Parent = Page_Page_Left,
-				FillDirection = "Vertical",
-				HorizontalAlignment = "Left",
-				VerticalAlignment = "Top"
-			})
-			--
-			local Page_Right_List = utility:RenderObject("UIListLayout", {
-				Padding = UDim.new(0, 18),
-				Parent = Page_Page_Right,
-				FillDirection = "Vertical",
-				HorizontalAlignment = "Left",
-				VerticalAlignment = "Top"
-			})
-			--
-			do -- // Index Setting
-				Page["Page"] = Page_Page
-				Page["Left"] = Page_Page_Left
-				Page["Right"] = Page_Page_Right
-			end
-			--
-			do -- // Functions
-				function Page:Set(state)
-					Page.Open = state
-					--
-					Page_Page.Visible = Page.Open
-					Page_Tab_Border.Visible = Page.Open
-					Page_Tab_Image.ImageColor3 = Page.Open and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(90, 90, 90)
-					--
-					if Page.Open then
-						Page.Window:SetPage(Page)
-					end
-				end
-			end
-			--
-			do -- // Connections
-				utility:CreateConnection(Page_Tab_Button.MouseButton1Click, function(Input)
-					if not Page.Open then
-						Page:Set(true)
-					end
-				end)
-				--
-				utility:CreateConnection(Page_Tab_Button.MouseEnter, function(Input)
-					Page_Tab_Image.ImageColor3 = Color3.fromRGB(172, 172, 172)
-				end)
-				--
-				utility:CreateConnection(Page_Tab_Button.MouseLeave, function(Input)
-					Page_Tab_Image.ImageColor3 = Page.Open and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(90, 90, 90)
-				end)
-			end
-		end
-		--
-		if #Page.Window.Pages == 0 then Page:Set(true) end
-		Page.Window.Pages[#Page.Window.Pages + 1] = Page
-		return setmetatable(Page, pages)
-	end
-	--
-	function pages:CreateSection(Properties)
-		Properties = Properties or {}
-		--
-		local Section = {
-			Name = (Properties.name or Properties.Name or Properties.title or Properties.Title or "New Section"),
-			Size = (Properties.size or Properties.Size or 150),
-			Side = (Properties.side or Properties.Side or "Left"),
-			Content = {},
-			Window = self.Window,
-			Page = self
-		}
-		--
-		do
-			local Section_Holder = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(40, 40, 40),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(12, 12, 12),
-				BorderMode = "Inset",
-				BorderSizePixel = 1,
-				Parent = Section.Page[Section.Side],
-				Size = UDim2.new(1, 0, 0, Section.Size),
-				ZIndex = 2
-			})
-			-- //
-			local Section_Holder_Extra = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Section_Holder,
-				Position = UDim2.new(0, 1, 0, 1),
-				Size = UDim2.new(1, -2, 1, -2),
-				ZIndex = 2
-			})
-			--
-			local Section_Holder_Frame = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(23, 23, 23),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Section_Holder,
-				Position = UDim2.new(0, 1, 0, 1),
-				Size = UDim2.new(1, -2, 1, -2),
-				ZIndex = 2
-			})
-			--
-			local Section_Holder_TitleInline = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(23, 23, 23),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Section_Holder,
-				Position = UDim2.new(0, 9, 0, -1),
-				Size = UDim2.new(0, 0, 0, 2),
-				ZIndex = 5
-			})
-			--
-			local Section_Holder_Title = utility:RenderObject("TextLabel", {
-				AnchorPoint = Vector2.new(0, 0.5),
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Section_Holder,
-				Position = UDim2.new(0, 12, 0, 0),
-				Size = UDim2.new(1, -26, 0, 15),
-				ZIndex = 5,
-				Font = "Code",
-				RichText = true,
-				Text = "<b>" .. Section.Name .. "</b>",
-				TextColor3 = Color3.fromRGB(205, 205, 205),
-				TextSize = 11,
-				TextStrokeTransparency = 1,
-				TextXAlignment = "Left"
-			})
-			-- //
-			local Holder_Extra_Gradient1 = utility:RenderObject("ImageLabel", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Section_Holder_Extra,
-				Position = UDim2.new(0, 1, 0, 1),
-				Rotation = 180,
-				Size = UDim2.new(1, -2, 0, 20),
-				Visible = false,
-				ZIndex = 4,
-				Image = "rbxassetid://7783533907",
-				ImageColor3 = Color3.fromRGB(23, 23, 23)
-			})
-			--
-			local Holder_Extra_Gradient2 = utility:RenderObject("ImageLabel", {
-				AnchorPoint = Vector2.new(0, 1),
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Section_Holder_Extra,
-				Position = UDim2.new(0, 0, 1, 0),
-				Size = UDim2.new(1, -2, 0, 20),
-				Visible = false,
-				ZIndex = 4,
-				Image = "rbxassetid://7783533907",
-				ImageColor3 = Color3.fromRGB(23, 23, 23)
-			})
-			--
-			local Holder_Extra_ArrowUp = utility:RenderObject("TextButton", {
-				BackgroundColor3 = Color3.fromRGB(255, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Section_Holder_Extra,
-				Position = UDim2.new(1, -21, 0, 0),
-				Size = UDim2.new(0, 7 + 8, 0, 6 + 8),
-				Text = "",
-				Visible = false,
-				ZIndex = 4
-			})
-			--
-			local Holder_Extra_ArrowDown = utility:RenderObject("TextButton", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Section_Holder_Extra,
-				Position = UDim2.new(1, -21, 1, -(6 + 8)),
-				Size = UDim2.new(0, 7 + 8, 0, 6 + 8),
-				Text = "",
-				Visible = false,
-				ZIndex = 4
-			})
-			-- //
-			local Extra_ArrowUp_Image = utility:RenderObject("ImageLabel", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Holder_Extra_ArrowUp,
-				Position = UDim2.new(0, 4, 0, 4),
-				Size = UDim2.new(0, 7, 0, 6),
-				Visible = true,
-				ZIndex = 4,
-				Image = "rbxassetid://8548757311",
-				ImageColor3 = Color3.fromRGB(205, 205, 205)
-			})
-			--
-			local Extra_ArrowDown_Image = utility:RenderObject("ImageLabel", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Holder_Extra_ArrowDown,
-				Position = UDim2.new(0, 4, 0, 4),
-				Size = UDim2.new(0, 7, 0, 6),
-				Visible = true,
-				ZIndex = 4,
-				Image = "rbxassetid://8548723563",
-				ImageColor3 = Color3.fromRGB(205, 205, 205)
-			})
-			--
-			local Holder_Extra_Bar = utility:RenderObject("Frame", {
-				AnchorPoint = Vector2.new(1, 0),
-				BackgroundColor3 = Color3.fromRGB(45, 45, 45),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Section_Holder_Extra,
-				Position = UDim2.new(1, 0, 0, 0),
-				Size = UDim2.new(0, 6, 1, 0),
-				Visible = false,
-				ZIndex = 4
-			})
-			--
-			local Holder_Extra_Line = utility:RenderObject("Frame", {
-				BackgroundColor3 = Color3.fromRGB(45, 45, 45),
-				BackgroundTransparency = 0,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Section_Holder_Extra,
-				Position = UDim2.new(0, 0, 0, -1),
-				Size = UDim2.new(1, 0, 0, 1),
-				ZIndex = 4
-			})
-			--
-			local Holder_Frame_ContentHolder = utility:RenderObject("ScrollingFrame", {
-				BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-				BackgroundTransparency = 1,
-				BorderColor3 = Color3.fromRGB(0, 0, 0),
-				BorderSizePixel = 0,
-				Parent = Section_Holder_Frame,
-				Position = UDim2.new(0, 0, 0, 0),
-				Size = UDim2.new(1, 0, 1, 0),
-				ZIndex = 4,
-				AutomaticCanvasSize = "Y",
-				BottomImage = "rbxassetid://7783554086",
-				CanvasSize = UDim2.new(0, 0, 0, 0),
-				MidImage = "rbxassetid://7783554086",
-				ScrollBarImageColor3 = Color3.fromRGB(65, 65, 65),
-				ScrollBarImageTransparency = 0,
-				ScrollBarThickness = 5,
-				TopImage = "rbxassetid://7783554086",
-				VerticalScrollBarInset = "None"
-			})
-			-- //
-			local Frame_ContentHolder_List = utility:RenderObject("UIListLayout", {
-				Padding = UDim.new(0, 0),
-				Parent = Holder_Frame_ContentHolder,
-				FillDirection = "Vertical",
-				HorizontalAlignment = "Center",
-				VerticalAlignment = "Top"
-			})
-			--
-			local Frame_ContentHolder_Padding = utility:RenderObject("UIPadding", {
-				Parent = Holder_Frame_ContentHolder,
-				PaddingTop = UDim.new(0, 15),
-				PaddingBottom = UDim.new(0, 15)
-			})
-			--
-			do -- // Section Init
-				Section_Holder_TitleInline.Size = UDim2.new(0, Section_Holder_Title.TextBounds.X + 6, 0, 2)
-			end
-			--
-			do -- // Index Setting
-				Section["Holder"] = Holder_Frame_ContentHolder
-				Section["Extra"] = Section_Holder_Extra
-			end
-			--
-			do -- // Functions
-				function Section:CloseContent()
-					if Section.Content.Open then
-						Section.Content:Close()
-						--
-						Section.Content = {}
-					end
-				end
-			end
-			--
-			do -- // Connections
-				utility:CreateConnection(Holder_Frame_ContentHolder:GetPropertyChangedSignal("AbsoluteCanvasSize"), function()
-					Holder_Extra_Gradient1.Visible = Holder_Frame_ContentHolder.AbsoluteCanvasSize.Y > Holder_Frame_ContentHolder.AbsoluteWindowSize.Y
-					Holder_Extra_Gradient2.Visible = Holder_Frame_ContentHolder.AbsoluteCanvasSize.Y > Holder_Frame_ContentHolder.AbsoluteWindowSize.Y
-					Holder_Extra_Bar.Visible = Holder_Frame_ContentHolder.AbsoluteCanvasSize.Y > Holder_Frame_ContentHolder.AbsoluteWindowSize.Y
-					--
-					if (Holder_Frame_ContentHolder.AbsoluteCanvasSize.Y > Holder_Frame_ContentHolder.AbsoluteWindowSize.Y) then
-						Holder_Extra_ArrowUp.Visible = (Holder_Frame_ContentHolder.CanvasPosition.Y > 5)
-						Holder_Extra_ArrowDown.Visible = (Holder_Frame_ContentHolder.CanvasPosition.Y + 5 < (Holder_Frame_ContentHolder.AbsoluteCanvasSize.Y - Holder_Frame_ContentHolder.AbsoluteSize.Y))
-					end
-				end)
-				--
-				utility:CreateConnection(Holder_Frame_ContentHolder:GetPropertyChangedSignal("CanvasPosition"), function()
-					if Section.Content.Open then
-						Section.Content:Close()
-						--
-						Section.Content = {}
-					end
-					--
-					Holder_Extra_ArrowUp.Visible = (Holder_Frame_ContentHolder.CanvasPosition.Y > 1)
-					Holder_Extra_ArrowDown.Visible = (Holder_Frame_ContentHolder.CanvasPosition.Y + 1 < (Holder_Frame_ContentHolder.AbsoluteCanvasSize.Y - Holder_Frame_ContentHolder.AbsoluteSize.Y))
-				end)
-				--
-				utility:CreateConnection(Holder_Extra_ArrowUp.MouseButton1Click, function()
-					Holder_Frame_ContentHolder.CanvasPosition = Vector2.new(0, math.clamp(Holder_Frame_ContentHolder.CanvasPosition.Y - 10, 0, Holder_Frame_ContentHolder.AbsoluteCanvasSize.Y - Holder_Frame_ContentHolder.AbsoluteSize.Y))
-				end)
-				--
-				utility:CreateConnection(Holder_Extra_ArrowDown.MouseButton1Click, function()
-					Holder_Frame_ContentHolder.CanvasPosition = Vector2.new(0, math.clamp(Holder_Frame_ContentHolder.CanvasPosition.Y + 10, 0, Holder_Frame_ContentHolder.AbsoluteCanvasSize.Y - Holder_Frame_ContentHolder.AbsoluteSize.Y))
-				end)
-			end
-		end
-		--
-		return setmetatable(Section, sections)
-	end
-	--
-	do -- // Content
-		function sections:CreateToggle(Properties)
-			Properties = Properties or {}
-			--
-			local Content = {
-				Name = (Properties.name or Properties.Name or Properties.title or Properties.Title or "New Toggle"),
-				State = (Properties.state or Properties.State or Properties.def or Properties.Def or Properties.default or Properties.Default or false),
-				Callback = (Properties.callback or Properties.Callback or Properties.callBack or Properties.CallBack or function() end),
-				Window = self.Window,
-				Page = self.Page,
-				Section = self
-			}
-			--
-			do
-				local Content_Holder = utility:RenderObject("Frame", {
-					BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-					BackgroundTransparency = 1,
-					BorderColor3 = Color3.fromRGB(0, 0, 0),
-					BorderSizePixel = 0,
-					Parent = Content.Section.Holder,
-					Size = UDim2.new(1, 0, 0, 8 + 10),
-					ZIndex = 3
-				})
-				-- //
-				local Content_Holder_Outline = utility:RenderObject("Frame", {
-					BackgroundColor3 = Color3.fromRGB(12, 12, 12),
-					BackgroundTransparency = 0,
-					BorderColor3 = Color3.fromRGB(0, 0, 0),
-					BorderSizePixel = 0,
-					Parent = Content_Holder,
-					Position = UDim2.new(0, 20, 0, 5),
-					Size = UDim2.new(0, 8, 0, 8),
-					ZIndex = 3
-				})
-				--
-				local Content_Holder_Title = utility:RenderObject("TextLabel", {
-					AnchorPoint = Vector2.new(0, 0),
-					BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-					BackgroundTransparency = 1,
-					BorderColor3 = Color3.fromRGB(0, 0, 0),
-					BorderSizePixel = 0,
-					Parent = Content_Holder,
-					Position = UDim2.new(0, 41, 0, 0),
-					Size = UDim2.new(1, -41, 1, 0),
-					ZIndex = 3,
-					Font = "Code",
-					RichText = true,
-					Text = Content.Name,
-					TextColor3 = Color3.fromRGB(205, 205, 205),
-					TextSize = 9,
-					TextStrokeTransparency = 1,
-					TextXAlignment = "Left"
-				})
-				--
-				local Content_Holder_Title2 = utility:RenderObject("TextLabel", {
-					AnchorPoint = Vector2.new(0, 0),
-					BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-					BackgroundTransparency = 1,
-					BorderColor3 = Color3.fromRGB(0, 0, 0),
-					BorderSizePixel = 0,
-					Parent = Content_Holder,
-					Position = UDim2.new(0, 41, 0, 0),
-					Size = UDim2.new(1, -41, 1, 0),
-					ZIndex = 3,
-					Font = "C
+-- 防止重复注入导致内存泄漏
+if getgenv().UnloadAim then
+    getgenv().UnloadAim()
+end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Camera = workspace.CurrentCamera
+local LP = Players.LocalPlayer
+
+local Config = {
+    Enabled = true,
+    AimPart = "Head",
+    BodyLock = true,
+    WallCheck = true,
+    ESP = false,
+    FOV = 150,
+    BulletSpeed = 1000,
+    Prediction = true,
+    -- 新增：预判倍率，0.4 表示只取 40% 的提前量（挪一点点）
+    PredictMultiplier = 0.4 
+}
+
+local Whitelist = {}
+local Connections = {}
+local isUnloaded = false
+local activeHighlights = {}
+local ButtonRegistry = {}
+local NPCCache = {} 
+
+local function addConnection(conn)
+    table.insert(Connections, conn)
+end
+
+local function isWhitelisted(entry)
+    if not entry then return false end
+    local targetName = tostring(entry)
+    local targetId = nil
+    if typeof(entry) == "Instance" and entry:IsA("Player") then
+        targetName = entry.Name
+        targetId = tostring(entry.UserId)
+    elseif typeof(entry) == "Instance" and entry:IsA("Model") then
+        targetName = entry.Name 
+    end
+    for _, whiteEntry in ipairs(Whitelist) do
+        if string.lower(tostring(whiteEntry)) == string.lower(targetName) then return true end
+        if targetId and tostring(whiteEntry) == targetId then return true end
+    end
+    return false
+end
+
+-- ================= 1. UI 构建 =================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AimAssistUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true 
+local success, err = pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
+if not success then ScreenGui.Parent = LP:WaitForChild("PlayerGui") end
+
+local FovCircle = Instance.new("Frame")
+FovCircle.Name = "FovCircle"
+FovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+FovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+FovCircle.Size = UDim2.fromOffset(Config.FOV * 2, Config.FOV * 2)
+FovCircle.BackgroundTransparency = 1
+FovCircle.Visible = Config.Enabled
+FovCircle.Parent = ScreenGui
+
+local FovCorner = Instance.new("UICorner")
+FovCorner.CornerRadius = UDim.new(1, 0)
+FovCorner.Parent = FovCircle
+
+local FovStroke = Instance.new("UIStroke")
+FovStroke.Color = Color3.fromRGB(0, 255, 255)
+FovStroke.Thickness = 1.5
+FovStroke.Transparency = 0.5
+FovStroke.Parent = FovCircle
+
+local function updateFovUI()
+    FovCircle.Size = UDim2.fromOffset(Config.FOV * 2, Config.FOV * 2)
+    FovCircle.Visible = Config.Enabled
+end
+
+-- 面板高度回缩到 330
+local Panel = Instance.new("Frame")
+Panel.Size = UDim2.new(0, 240, 0, 330) 
+Panel.Position = UDim2.new(1, -260, 0.15, 0) 
+Panel.BackgroundTransparency = 1
+Panel.Parent = ScreenGui
+
+local BgFrame = Instance.new("Frame")
+BgFrame.Size = UDim2.new(1, 0, 1, 0)
+BgFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+BgFrame.BackgroundTransparency = 0.2
+BgFrame.BorderSizePixel = 0
+BgFrame.ZIndex = 1
+BgFrame.Parent = Panel
+
+local BgCorner = Instance.new("UICorner")
+BgCorner.CornerRadius = UDim.new(0, 10)
+BgCorner.Parent = BgFrame
+
+local BgStroke = Instance.new("UIStroke")
+BgStroke.Color = Color3.fromRGB(60, 60, 60)
+BgStroke.Thickness = 1.5
+BgStroke.Transparency = 0.5
+BgStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+BgStroke.Parent = BgFrame
+
+local BallBtn = Instance.new("TextButton")
+BallBtn.Size = UDim2.new(0, 45, 0, 45)
+BallBtn.Position = Panel.Position
+BallBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+BallBtn.Text = "UI"
+BallBtn.TextColor3 = Color3.new(1, 1, 1)
+BallBtn.TextSize = 14
+BallBtn.Font = Enum.Font.GothamBold
+BallBtn.AutoButtonColor = false
+BallBtn.Visible = false
+BallBtn.ZIndex = 10
+BallBtn.Parent = ScreenGui
+
+local BallCorner = Instance.new("UICorner")
+BallCorner.CornerRadius = UDim.new(1, 0)
+BallCorner.Parent = BallBtn
+
+local BallStroke = Instance.new("UIStroke")
+BallStroke.Color = Color3.fromRGB(255, 255, 255)
+BallStroke.Thickness = 2
+BallStroke.Transparency = 0.5
+BallStroke.Parent = BallBtn
+
+-- ================= 2. 拖拽与点击逻辑 =================
+local dragging = false
+local dragStart, startPos, dragDistance = nil, nil, 0
+local currentTouchedBtn = nil
+local draggingGui = nil 
+
+local function isPointInGui(gui, point)
+    if not gui or not gui.Visible then return false end
+    local pos = gui.AbsolutePosition
+    local size = gui.AbsoluteSize
+    return point.X >= pos.X and point.X <= pos.X + size.X and point.Y >= pos.Y and point.Y <= pos.Y + size.Y
+end
+
+addConnection(UserInputService.InputBegan:Connect(function(input, gpe)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local point = input.Position
+        if isPointInGui(Panel, point) or isPointInGui(BallBtn, point) then
+            if isPointInGui(NameBox, point) then return end
+            dragging = true
+            dragStart = point
+            dragDistance = 0
+            currentTouchedBtn = nil
+            
+            if isPointInGui(Panel, point) then
+                draggingGui = Panel
+            elseif isPointInGui(BallBtn, point) then
+                draggingGui = BallBtn
+            end
+            startPos = draggingGui.Position
+            
+            for _, data in ipairs(ButtonRegistry) do
+                if isPointInGui(data.btn, point) then
+                    currentTouchedBtn = data
+                    break
+                end
+            end
+        end
+    end
+end))
+
+addConnection(UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and draggingGui then
+        local delta = input.Position - dragStart
+        dragDistance = math.abs(delta.X) + math.abs(delta.Y)
+        draggingGui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end))
+
+addConnection(UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if dragging then
+            dragging = false
+            if dragDistance < 10 and currentTouchedBtn then
+                currentTouchedBtn.callback()
+            end
+            currentTouchedBtn = nil
+            draggingGui = nil
+        end
+    end
+end))
+
+local function registerButton(btn, callback)
+    btn.Active = false 
+    table.insert(ButtonRegistry, {btn = btn, callback = callback})
+end
+
+registerButton(BallBtn, function()
+    BallBtn.Visible = false
+    Panel.Visible = true
+    Panel.Position = BallBtn.Position
+end)
+
+-- ================= 3. 控件生成器 =================
+local function createToggle(labelText, yPos, initialValue, callback)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0, 150, 0, 25) 
+    lbl.Position = UDim2.new(0, 15, 0, yPos)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = labelText
+    lbl.TextColor3 = Color3.fromRGB(230, 230, 230)
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 14
+    lbl.ZIndex = 2
+    lbl.Parent = Panel
+
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Size = UDim2.new(0, 44, 0, 24)
+    toggleBtn.Position = UDim2.new(1, -59, 0, yPos + 0.5)
+    toggleBtn.BackgroundColor3 = initialValue and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)
+    toggleBtn.Text = ""
+    toggleBtn.AutoButtonColor = false
+    toggleBtn.ZIndex = 2
+    toggleBtn.Parent = Panel
+    
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(1, 0)
+    toggleCorner.Parent = toggleBtn
+
+    local knob = Instance.new("Frame")
+    knob.Size = UDim2.new(0, 20, 0, 20)
+    knob.Position = initialValue and UDim2.new(0, 22, 0, 2) or UDim2.new(0, 2, 0, 2)
+    knob.BackgroundColor3 = Color3.new(1, 1, 1)
+    knob.ZIndex = 3
+    knob.Parent = toggleBtn
+
+    local knobCorner = Instance.new("UICorner")
+    knobCorner.CornerRadius = UDim.new(1, 0)
+    knobCorner.Parent = knob
+
+    local state = initialValue
+    
+    registerButton(toggleBtn, function()
+        state = not state
+        local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(toggleBtn, tweenInfo, {BackgroundColor3 = state and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(60, 60, 60)}):Play()
+        TweenService:Create(knob, tweenInfo, {Position = state and UDim2.new(0, 22, 0, 2) or UDim2.new(0, 2, 0, 2)}):Play()
+        callback(state)
+    end)
+end
+
+-- 只保留 4 个开关
+createToggle("准心锁", 35, Config.Enabled, function(v) Config.Enabled = v; updateFovUI() end)
+createToggle("墙体检测", 70, Config.WallCheck, function(v) Config.WallCheck = v end)
+createToggle("透视 (ESP)", 105, Config.ESP, function(v) Config.ESP = v end)
+createToggle("自动预判", 140, Config.Prediction, function(v) Config.Prediction = v end)
+
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 25, 0, 25)
+MinBtn.Position = UDim2.new(1, -35, 0, 5) 
+MinBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+MinBtn.Text = "-"
+MinBtn.TextColor3 = Color3.new(1, 1, 1)
+MinBtn.TextSize = 18
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.ZIndex = 3
+MinBtn.Parent = Panel
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(1, 0)
+MinCorner.Parent = MinBtn
+
+registerButton(MinBtn, function()
+    Panel.Visible = false
+    BallBtn.Visible = true
+    BallBtn.Position = Panel.Position
+end)
+
+-- === FOV 调节区 (Y 上移至 180) ===
+local FovLabel = Instance.new("TextLabel")
+FovLabel.Size = UDim2.new(0, 100, 0, 30)
+FovLabel.Position = UDim2.new(0, 15, 0, 180)
+FovLabel.BackgroundTransparency = 1
+FovLabel.Text = "FOV: " .. Config.FOV
+FovLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+FovLabel.TextXAlignment = Enum.TextXAlignment.Left
+FovLabel.Font = Enum.Font.GothamBold
+FovLabel.TextSize = 14
+FovLabel.ZIndex = 2
+FovLabel.Parent = Panel
+
+local MinusBtn = Instance.new("TextButton")
+MinusBtn.Size = UDim2.new(0, 35, 0, 28)
+MinusBtn.Position = UDim2.new(1, -95, 0, 181)
+MinusBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+MinusBtn.Text = "-"
+MinusBtn.TextColor3 = Color3.new(1, 1, 1)
+MinusBtn.TextSize = 20
+MinusBtn.Font = Enum.Font.GothamBold
+MinusBtn.ZIndex = 2
+MinusBtn.Parent = Panel
+local MinusCorner = Instance.new("UICorner")
+MinusCorner.CornerRadius = UDim.new(0, 6)
+MinusCorner.Parent = MinusBtn
+
+local PlusBtn = Instance.new("TextButton")
+PlusBtn.Size = UDim2.new(0, 50, 0, 28)
+PlusBtn.Position = UDim2.new(1, -55, 0, 181)
+PlusBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+PlusBtn.Text = "+"
+PlusBtn.TextColor3 = Color3.new(1, 1, 1)
+PlusBtn.TextSize = 20
+PlusBtn.Font = Enum.Font.GothamBold
+PlusBtn.ZIndex = 2
+PlusBtn.Parent = Panel
+local PlusCorner = Instance.new("UICorner")
+PlusCorner.CornerRadius = UDim.new(0, 6)
+PlusCorner.Parent = PlusBtn
+
+registerButton(MinusBtn, function()
+    Config.FOV = math.max(20, Config.FOV - 20)
+    FovLabel.Text = "FOV: " .. Config.FOV
+    updateFovUI()
+end)
+
+registerButton(PlusBtn, function()
+    Config.FOV = math.min(500, Config.FOV + 20)
+    FovLabel.Text = "FOV: " .. Config.FOV
+    updateFovUI()
+end)
+
+-- === 白名单区 (Y 上移至 220) ===
+local NameBox = Instance.new("TextBox")
+NameBox.Size = UDim2.new(0, 155, 0, 30) 
+NameBox.Position = UDim2.new(0, 15, 0, 220)
+NameBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+NameBox.TextColor3 = Color3.new(1, 1, 1)
+NameBox.PlaceholderText = "输入玩家/人机名"
+NameBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+NameBox.Text = ""
+NameBox.Font = Enum.Font.Gotham
+NameBox.TextSize = 13
+NameBox.ZIndex = 2
+NameBox.Parent = Panel
+
+local BoxCorner = Instance.new("UICorner")
+BoxCorner.CornerRadius = UDim.new(0, 6)
+BoxCorner.Parent = NameBox
+
+local AddBtn = Instance.new("TextButton")
+AddBtn.Size = UDim2.new(0, 50, 0, 30) 
+AddBtn.Position = UDim2.new(1, -65, 0, 220)
+AddBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+AddBtn.Text = "添加"
+AddBtn.TextColor3 = Color3.new(1, 1, 1)
+AddBtn.TextSize = 13
+AddBtn.Font = Enum.Font.GothamBold
+AddBtn.ZIndex = 2
+AddBtn.Parent = Panel
+
+local AddCorner = Instance.new("UICorner")
+AddCorner.CornerRadius = UDim.new(0, 6)
+AddCorner.Parent = AddBtn
+
+registerButton(AddBtn, function()
+    local name = NameBox.Text
+    if name == "" then return end
+    local foundIndex = nil
+    for i, v in ipairs(Whitelist) do
+        if string.lower(tostring(v)) == string.lower(name) then
+            foundIndex = i
+            break
+        end
+    end
+    if foundIndex then
+        table.remove(Whitelist, foundIndex)
+        print("[白名单] 已移除:", name)
+    else
+        table.insert(Whitelist, name)
+        print("[白名单] 已添加:", name)
+    end
+    NameBox.Text = ""
+end)
+
+-- === 卸载按钮 (Y 上移至 270) ===
+local UnloadBtn = Instance.new("TextButton")
+UnloadBtn.Size = UDim2.new(1, -30, 0, 35) 
+UnloadBtn.Position = UDim2.new(0, 15, 0, 270)
+UnloadBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+UnloadBtn.Text = "卸载脚本"
+UnloadBtn.TextColor3 = Color3.new(1, 1, 1)
+UnloadBtn.TextSize = 14
+UnloadBtn.Font = Enum.Font.GothamBold
+UnloadBtn.ZIndex = 2
+UnloadBtn.Parent = Panel
+
+local UnloadCorner = Instance.new("UICorner")
+UnloadCorner.CornerRadius = UDim.new(0, 6)
+UnloadCorner.Parent = UnloadBtn
+
+local function UnloadAim()
+    isUnloaded = true
+    Config.Enabled = false
+    Config.ESP = false
+
+    for _, hl in pairs(activeHighlights) do
+        if hl and hl.Parent then hl:Destroy() end
+    end
+    activeHighlights = {}
+
+    for _, conn in pairs(Connections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    Connections = {}
+
+    if ScreenGui and ScreenGui.Parent then ScreenGui:Destroy() end
+
+    getgenv().UnloadAim = nil
+    print("[AimAssist] 脚本已完全卸载。")
+end
+
+registerButton(UnloadBtn, UnloadAim)
+getgenv().UnloadAim = UnloadAim
+
+-- ================= 4. 人机扫描与透视 =================
+task.spawn(function()
+    while not isUnloaded do
+        local newCache = {}
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj ~= LP.Character then
+                local hum = obj:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    if not Players:GetPlayerFromCharacter(obj) then
+                        table.insert(newCache, obj)
+                    end
+                end
+            end
+        end
+        NPCCache = newCache
+        task.wait(1.5)
+    end
+end)
+
+local function applyESP(model, isWhite)
+    if not model or not model.Parent then return end
+    local highlight = model:FindFirstChild("BrutalESP")
+    
+    if not highlight then
+        highlight = Instance.new("Highlight")
+        highlight.Name = "BrutalESP"
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.Parent = model
+        activeHighlights[model] = highlight
+    end
+    
+    if isWhite then
+        highlight.FillColor = Color3.fromRGB(0, 255, 0)
+        highlight.OutlineColor = Color3.fromRGB(0, 255, 0)
+    else
+        if Players:GetPlayerFromCharacter(model) then
+            highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        else
+            highlight.FillColor = Color3.fromRGB(255, 165, 0) 
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        end
+    end
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+end
+
+local function removeESP(model)
+    if model and activeHighlights[model] then
+        activeHighlights[model]:Destroy()
+        activeHighlights[model] = nil
+    end
+end
+
+task.spawn(function()
+    while not isUnloaded do
+        task.wait(0.5)
+        if Config.ESP then
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LP and p.Character then
+                    applyESP(p.Character, isWhitelisted(p))
+                end
+            end
+            for _, npc in ipairs(NPCCache) do
+                if npc and npc.Parent then
+                    applyESP(npc, isWhitelisted(npc.Name))
+                end
+            end
+        else
+            for model, _ in pairs(activeHighlights) do
+                removeESP(model)
+            end
+        end
+    end
+end)
+
+-- ================= 5. 统一自瞄 + 智能微弱预判 =================
+local function getClosestToCrosshair()
+    local center = Camera.ViewportSize / 2
+    local closestPart = nil
+    local predictedPos = nil
+    local shortestDist = Config.FOV
+    
+    local function checkTarget(model, isWhite)
+        if isWhite or not model then return end
+        local hum = model:FindFirstChildOfClass("Humanoid")
+        local part = model:FindFirstChild(Config.AimPart) or model:FindFirstChild("HumanoidRootPart")
+        local hrp = model:FindFirstChild("HumanoidRootPart")
+        
+        if hum and hum.Health > 0 and part then
+            local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+            if onScreen then
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                if dist < shortestDist then
+                    local visible = true
+                    if Config.WallCheck then
+                        local raycastParams = RaycastParams.new()
+                        raycastParams.FilterDescendantsInstances = {LP.Character, model}
+                        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+                        raycastParams.IgnoreWater = true
+                        local result = workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, raycastParams)
+                        if result then visible = false end
+                    end
+                    if visible then
+                        shortestDist = dist
+                        closestPart = part
+                        
+                        if Config.Prediction and hrp then
+                            local targetVel = hrp.AssemblyLinearVelocity
+                            local dist3D = (part.Position - Camera.CFrame.Position).Magnitude
+                            local travelTime = dist3D / Config.BulletSpeed
+                            -- 乘以 PredictMultiplier，只提前一点点
+                            predictedPos = part.Position + (targetVel * travelTime * Config.PredictMultiplier)
+                        else
+                            predictedPos = part.Position
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character then
+            checkTarget(p.Character, isWhitelisted(p))
+        end
+    end
+    
+    for _, npc in ipairs(NPCCache) do
+        if npc and npc.Parent then
+            checkTarget(npc, isWhitelisted(npc.Name))
+        end
+    end
+
+    return closestPart, predictedPos
+end
+
+addConnection(RunService.RenderStepped:Connect(function()
+    if isUnloaded or not Config.Enabled then return end
+    
+    local target, aimPos = getClosestToCrosshair()
+    local char = LP.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if target and aimPos and hrp then
+        Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, aimPos)
+        if Config.BodyLock then
+            local currentPos = hrp.Position
+            hrp.CFrame = CFrame.lookAt(currentPos, Vector3.new(aimPos.X, currentPos.Y, aimPos.Z))
+        end
+    end
+end))
+
+updateFovUI()
+print("[精简预判版] 已注入。无扩散与射速已移除，预判幅度已减小。")
