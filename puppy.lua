@@ -19,8 +19,7 @@ local Config = {
     FOV = 150,
     BulletSpeed = 1000,
     Prediction = true,
-    -- 新增：预判倍率，0.4 表示只取 40% 的提前量（挪一点点）
-    PredictMultiplier = 0.4 
+    PredictMultiplier = 0.4
 }
 
 local Whitelist = {}
@@ -83,10 +82,10 @@ local function updateFovUI()
     FovCircle.Visible = Config.Enabled
 end
 
--- 面板高度回缩到 330
+-- 面板高度加高到 380
 local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(0, 240, 0, 330) 
-Panel.Position = UDim2.new(1, -260, 0.15, 0) 
+Panel.Size = UDim2.new(0, 240, 0, 380) 
+Panel.Position = UDim2.new(1, -260, 0.1, 0) 
 Panel.BackgroundTransparency = 1
 Panel.Parent = ScreenGui
 
@@ -253,7 +252,6 @@ local function createToggle(labelText, yPos, initialValue, callback)
     end)
 end
 
--- 只保留 4 个开关
 createToggle("准心锁", 35, Config.Enabled, function(v) Config.Enabled = v; updateFovUI() end)
 createToggle("墙体检测", 70, Config.WallCheck, function(v) Config.WallCheck = v end)
 createToggle("透视 (ESP)", 105, Config.ESP, function(v) Config.ESP = v end)
@@ -279,7 +277,7 @@ registerButton(MinBtn, function()
     BallBtn.Position = Panel.Position
 end)
 
--- === FOV 调节区 (Y 上移至 180) ===
+-- === FOV 调节区 ===
 local FovLabel = Instance.new("TextLabel")
 FovLabel.Size = UDim2.new(0, 100, 0, 30)
 FovLabel.Position = UDim2.new(0, 15, 0, 180)
@@ -332,7 +330,7 @@ registerButton(PlusBtn, function()
     updateFovUI()
 end)
 
--- === 白名单区 (Y 上移至 220) ===
+-- === 白名单输入区 ===
 local NameBox = Instance.new("TextBox")
 NameBox.Size = UDim2.new(0, 155, 0, 30) 
 NameBox.Position = UDim2.new(0, 15, 0, 220)
@@ -365,8 +363,8 @@ local AddCorner = Instance.new("UICorner")
 AddCorner.CornerRadius = UDim.new(0, 6)
 AddCorner.Parent = AddBtn
 
-registerButton(AddBtn, function()
-    local name = NameBox.Text
+-- 手动输入添加的逻辑复用（抽离成函数）
+local function ToggleWhiteByName(name)
     if name == "" then return end
     local foundIndex = nil
     for i, v in ipairs(Whitelist) do
@@ -382,13 +380,70 @@ registerButton(AddBtn, function()
         table.insert(Whitelist, name)
         print("[白名单] 已添加:", name)
     end
+end
+
+registerButton(AddBtn, function()
+    ToggleWhiteByName(NameBox.Text)
     NameBox.Text = ""
 end)
 
--- === 卸载按钮 (Y 上移至 270) ===
+-- === 新增：准心快捷加白按钮 (Y=265) ===
+local AimAddBtn = Instance.new("TextButton")
+AimAddBtn.Size = UDim2.new(1, -30, 0, 32) 
+AimAddBtn.Position = UDim2.new(0, 15, 0, 265)
+AimAddBtn.BackgroundColor3 = Color3.fromRGB(255, 140, 0) -- 橙色
+AimAddBtn.Text = "准心加白 / 移除"
+AimAddBtn.TextColor3 = Color3.new(1, 1, 1)
+AimAddBtn.TextSize = 14
+AimAddBtn.Font = Enum.Font.GothamBold
+AimAddBtn.ZIndex = 2
+AimAddBtn.Parent = Panel
+
+local AimAddCorner = Instance.new("UICorner")
+AimAddCorner.CornerRadius = UDim.new(0, 6)
+AimAddCorner.Parent = AimAddBtn
+
+-- 获取准星射线命中的目标
+local function getTargetFromCrosshair()
+    local center = Camera.ViewportSize / 2
+    -- 从屏幕中心发射射线
+    local ray = Camera:ViewportPointToRay(center.X, center.Y)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {LP.Character} -- 过滤掉自己
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    
+    local result = workspace:Raycast(ray.Origin, ray.Direction * 2000, raycastParams)
+    if result and result.Instance then
+        -- 向上寻找角色模型 (Player.Character 或 NPC)
+        local hitModel = result.Instance:FindFirstAncestorOfClass("Model")
+        if hitModel and hitModel ~= workspace then
+            local isPlayer = Players:GetPlayerFromCharacter(hitModel)
+            local hasHumanoid = hitModel:FindFirstChildOfClass("Humanoid")
+            if isPlayer or (hasHumanoid and not isPlayer) then
+                return hitModel
+            end
+        end
+    end
+    return nil
+end
+
+registerButton(AimAddBtn, function()
+    local targetModel = getTargetFromCrosshair()
+    if targetModel then
+        local targetName = targetModel.Name
+        local player = Players:GetPlayerFromCharacter(targetModel)
+        if player then targetName = player.Name end
+        
+        ToggleWhiteByName(targetName)
+    else
+        print("[白名单] 准心未指向任何玩家或人机")
+    end
+end)
+
+-- === 卸载按钮 (Y=315) ===
 local UnloadBtn = Instance.new("TextButton")
 UnloadBtn.Size = UDim2.new(1, -30, 0, 35) 
-UnloadBtn.Position = UDim2.new(0, 15, 0, 270)
+UnloadBtn.Position = UDim2.new(0, 15, 0, 315)
 UnloadBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 UnloadBtn.Text = "卸载脚本"
 UnloadBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -501,7 +556,7 @@ task.spawn(function()
     end
 end)
 
--- ================= 5. 统一自瞄 + 智能微弱预判 =================
+-- ================= 5. 统一自瞄 =================
 local function getClosestToCrosshair()
     local center = Camera.ViewportSize / 2
     local closestPart = nil
@@ -536,7 +591,6 @@ local function getClosestToCrosshair()
                             local targetVel = hrp.AssemblyLinearVelocity
                             local dist3D = (part.Position - Camera.CFrame.Position).Magnitude
                             local travelTime = dist3D / Config.BulletSpeed
-                            -- 乘以 PredictMultiplier，只提前一点点
                             predictedPos = part.Position + (targetVel * travelTime * Config.PredictMultiplier)
                         else
                             predictedPos = part.Position
@@ -579,4 +633,4 @@ addConnection(RunService.RenderStepped:Connect(function()
 end))
 
 updateFovUI()
-print("[精简预判版] 已注入。无扩散与射速已移除，预判幅度已减小。")
+print("[准心加白版] 已注入。支持一键锁定目标加白/移除。")
